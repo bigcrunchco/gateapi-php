@@ -406,11 +406,13 @@ class Configuration
         $fullPath = parse_url($this->getHost(), PHP_URL_PATH) . $resourcePath;
         $fmt = "%s\n%s\n%s\n%s\n%s";
         $timestamp = time();
-        $hashedPayload = hash("sha512", ($payload != null) ? $payload : "");
-        $signatureString = sprintf($fmt, $method, $fullPath,
-            http_build_query($queryParams, false),
-            $hashedPayload, $timestamp);
+
+        $query = http_build_query($queryParams ?? [], '', '&', PHP_QUERY_RFC3986);
+        $hashedPayload = hash("sha512", $payload ?? '');
+
+        $signatureString = sprintf($fmt, $method, $fullPath, $query, $hashedPayload, $timestamp);
         $signature = hash_hmac("sha512", $signatureString, $this->getSecret());
+
         return [
             "KEY" => $this->getKey(),
             "SIGN" => $signature,
