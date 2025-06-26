@@ -401,35 +401,35 @@ class Configuration
      * @param string $payload Body string
      * @return array Signature headers
      */
-    public function buildSignHeaders($method, $resourcePath, $queryParams = null, $payload = null)
+    public function buildSignHeaders($method, $resourcePath, $queryParams = [], $payload = '')
     {
-        $fullPath = parse_url($this->getHost(), PHP_URL_PATH) . $resourcePath;
-
-        $fmt = "%s\n%s\n%s\n%s\n%s";
+        $hostPath = parse_url($this->getHost(), PHP_URL_PATH) ?? '';
+        $fullPath = $hostPath . $resourcePath;
         $timestamp = time();
 
-        // 1. Query string encoding (RFC 3986 uyumlu)
-        $query = http_build_query($queryParams ?? [], '', '&', PHP_QUERY_RFC3986);
+        if ($queryParams) {
+            ksort($queryParams);
+        }
 
-        // 2. Body hashing — Eğer payload string değilse json_encode
+        $query = http_build_query($queryParams, '', '&', PHP_QUERY_RFC3986);
+
         if (is_array($payload) || is_object($payload)) {
             $payload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
-        $hashedPayload = hash("sha512", $payload ?? '');
+        $hashedPayload = hash('sha512', $payload ?? '');
 
-        // 3. Signature string
-        $signatureString = sprintf($fmt, $method, $fullPath, $query, $hashedPayload, $timestamp);
+        $signatureString = sprintf("%s\n%s\n%s\n%s\n%s", $method, $fullPath, $query, $hashedPayload, $timestamp);
 
-        // 4. Sign it
-        $signature = hash_hmac("sha512", $signatureString, $this->getSecret());
+        $signature = hash_hmac('sha512', $signatureString, $this->getSecret());
 
         return [
-            "KEY" => $this->getKey(),
-            "SIGN" => $signature,
-            "Timestamp" => $timestamp
+            'KEY' => $this->getKey(),
+            'SIGN' => $signature,
+            'Timestamp' => $timestamp,
         ];
     }
+
 
 
     /**
