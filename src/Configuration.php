@@ -404,13 +404,24 @@ class Configuration
     public function buildSignHeaders($method, $resourcePath, $queryParams = null, $payload = null)
     {
         $fullPath = parse_url($this->getHost(), PHP_URL_PATH) . $resourcePath;
+
         $fmt = "%s\n%s\n%s\n%s\n%s";
         $timestamp = time();
 
+        // 1. Query string encoding (RFC 3986 uyumlu)
         $query = http_build_query($queryParams ?? [], '', '&', PHP_QUERY_RFC3986);
+
+        // 2. Body hashing — Eğer payload string değilse json_encode
+        if (is_array($payload) || is_object($payload)) {
+            $payload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+
         $hashedPayload = hash("sha512", $payload ?? '');
 
+        // 3. Signature string
         $signatureString = sprintf($fmt, $method, $fullPath, $query, $hashedPayload, $timestamp);
+
+        // 4. Sign it
         $signature = hash_hmac("sha512", $signatureString, $this->getSecret());
 
         return [
@@ -419,6 +430,7 @@ class Configuration
             "Timestamp" => $timestamp
         ];
     }
+
 
     /**
      * Returns an array of host settings
